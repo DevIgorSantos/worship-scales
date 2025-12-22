@@ -47,6 +47,7 @@ export default function Profile() {
         setLoading(true)
         try {
             const { error } = await supabase.from("profiles").update({
+                id: user.id,
                 full_name: name,
             }).eq("id", user.id)
 
@@ -79,7 +80,7 @@ export default function Profile() {
         })
     }
 
-    const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
+    const onCropComplete = (_: any, croppedAreaPixels: any) => {
         setCroppedAreaPixels(croppedAreaPixels)
     }
 
@@ -109,6 +110,7 @@ export default function Profile() {
 
             // Update profile
             const { error: updateError } = await supabase.from("profiles").update({
+                id: user!.id,
                 avatar_url: data.publicUrl
             }).eq("id", user!.id)
 

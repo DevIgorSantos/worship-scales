@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react"
-import { Search, Plus, Trash2, X } from "lucide-react"
+import { Plus, Search, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -40,7 +41,7 @@ export function ManageServiceSongs({ serviceId, currentSongs, onUpdate }: Manage
             const { data, error } = await supabase
                 .from("songs")
                 .select("*")
-                .ilike("title", `%${searchTerm}%`)
+                .ilike("title", `% ${searchTerm}% `)
                 .limit(5)
 
             if (error) throw error

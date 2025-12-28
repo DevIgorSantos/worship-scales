@@ -107,18 +107,21 @@ export type Database = {
                     order_index: number
                     service_id: string
                     song_id: string
+                    key: string | null
                 }
                 Insert: {
                     id?: string
                     order_index?: number
                     service_id: string
                     song_id: string
+                    key?: string | null
                 }
                 Update: {
                     id?: string
                     order_index?: number
                     service_id?: string
                     song_id?: string
+                    key?: string | null
                 }
                 Relationships: [
                     {
@@ -208,6 +211,7 @@ export type Database = {
                     link: string | null
                     title: string
                     type: Database["public"]["Enums"]["song_type"]
+                    tone: string | null
                 }
                 Insert: {
                     artist?: string | null
@@ -216,6 +220,7 @@ export type Database = {
                     link?: string | null
                     title: string
                     type: Database["public"]["Enums"]["song_type"]
+                    tone?: string | null
                 }
                 Update: {
                     artist?: string | null
@@ -224,6 +229,7 @@ export type Database = {
                     link?: string | null
                     title?: string
                     type?: Database["public"]["Enums"]["song_type"]
+                    tone?: string | null
                 }
                 Relationships: []
             }

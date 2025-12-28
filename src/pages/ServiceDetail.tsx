@@ -44,7 +44,7 @@ export default function ServiceDetail() {
     const [isAcknowledged, setIsAcknowledged] = useState(false)
 
     // Lyrics Dialog State
-    const [selectedSong, setSelectedSong] = useState<{ id: string, title: string } | null>(null)
+    const [selectedSong, setSelectedSong] = useState<{ id: string, title: string, key?: string | null } | null>(null)
     const [isLyricsOpen, setIsLyricsOpen] = useState(false)
 
     useEffect(() => {
@@ -96,7 +96,7 @@ export default function ServiceDetail() {
                     .select("*")
                     .eq("service_id", id!)
                     .eq("member_id", user.id)
-                    .single()
+                    .maybeSingle()
 
                 if (!ackError && ack) {
                     setIsAcknowledged(true)
@@ -125,8 +125,12 @@ export default function ServiceDetail() {
         }
     }
 
-    const handleOpenLyrics = (song: Database["public"]["Tables"]["songs"]["Row"]) => {
-        setSelectedSong({ id: song.id, title: song.title })
+    const handleOpenLyrics = (serviceSong: ServiceSong) => {
+        setSelectedSong({
+            id: serviceSong.songs.id,
+            title: serviceSong.songs.title,
+            key: serviceSong.key
+        })
         setIsLyricsOpen(true)
     }
 
@@ -151,6 +155,17 @@ export default function ServiceDetail() {
             alert("Erro ao excluir culto.")
             setLoading(false)
         }
+    }
+
+    const handleKeySaved = async (newKey: string) => {
+        // Optimistically update the selected song state so if the user reopens the dialog, it has the new key
+        if (selectedSong) {
+            setSelectedSong({
+                ...selectedSong,
+                key: newKey
+            })
+        }
+        await fetchServiceDetails()
     }
 
     if (loading) {
@@ -244,7 +259,16 @@ export default function ServiceDetail() {
                                                 */}
                                                 <span className="text-muted-foreground font-mono text-sm w-4">{index + 1}.</span>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-medium truncate">{item.songs?.title}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-medium truncate">{item.songs?.title}</p>
+                                                        {item.key && (
+                                                            <span className="text-[10px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                                                                {/^[+-]?\d+$/.test(item.key)
+                                                                    ? `${parseInt(item.key) > 0 ? '+' : ''}${item.key}`
+                                                                    : item.key}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <p className="text-xs text-muted-foreground truncate">{item.songs?.artist}</p>
                                                 </div>
 
@@ -253,7 +277,7 @@ export default function ServiceDetail() {
                                                         variant="ghost"
                                                         size="icon"
                                                         className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                        onClick={() => handleOpenLyrics(item.songs)}
+                                                        onClick={() => handleOpenLyrics(item)}
                                                         title="Ver Letra"
                                                     >
                                                         <FileText className="w-4 h-4" />
@@ -281,7 +305,16 @@ export default function ServiceDetail() {
                                             <CardContent className="p-3 flex items-center gap-3">
                                                 <span className="text-muted-foreground font-mono text-sm w-4">{index + 1}.</span>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-medium truncate">{item.songs?.title}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-medium truncate">{item.songs?.title}</p>
+                                                        {item.key && (
+                                                            <span className="text-[10px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                                                                {/^[+-]?\d+$/.test(item.key)
+                                                                    ? `${parseInt(item.key) > 0 ? '+' : ''}${item.key}`
+                                                                    : item.key}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <p className="text-xs text-muted-foreground truncate">{item.songs?.artist}</p>
                                                 </div>
 
@@ -290,7 +323,7 @@ export default function ServiceDetail() {
                                                         variant="ghost"
                                                         size="icon"
                                                         className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                        onClick={() => handleOpenLyrics(item.songs)}
+                                                        onClick={() => handleOpenLyrics(item)}
                                                         title="Ver Letra"
                                                     >
                                                         <FileText className="w-4 h-4" />
@@ -366,6 +399,9 @@ export default function ServiceDetail() {
                 onOpenChange={setIsLyricsOpen}
                 songId={selectedSong?.id || null}
                 songTitle={selectedSong?.title || ""}
+                serviceId={id}
+                initialKey={selectedSong?.key}
+                onKeySaved={handleKeySaved}
             />
         </div>
     )

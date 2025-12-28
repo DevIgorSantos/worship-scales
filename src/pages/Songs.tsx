@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Music, PlayCircle, FileText, Search } from "lucide-react"
+import { Music, PlayCircle, FileText, Search, Pencil } from "lucide-react"
 // import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
@@ -27,6 +27,13 @@ export default function Songs() {
     // Lyrics state
     const [selectedSong, setSelectedSong] = useState<{ id: string, title: string } | null>(null)
     const [isLyricsOpen, setIsLyricsOpen] = useState(false)
+    const [songToEdit, setSongToEdit] = useState<Song | null>(null)
+    const [isEditOpen, setIsEditOpen] = useState(false)
+
+    const handleEdit = (song: Song) => {
+        setSongToEdit(song)
+        setIsEditOpen(true)
+    }
 
     const handleOpenLyrics = (song: Song) => {
         setSelectedSong({ id: song.id, title: song.title })
@@ -49,9 +56,9 @@ export default function Songs() {
         return (
             <div className="grid gap-3">
                 {songs.map((song) => (
-                    <Card key={song.id} className="hover:bg-accent/50 transition-colors group">
+                    <Card key={song.id} className="hover:bg-accent/50 transition-colors group min-w-0">
                         <CardContent className="p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="flex flex-1 items-center gap-3 overflow-hidden min-w-0">
                                 <div className={`p-2 rounded-full ${song.type === 'Harpa Cristã' ? 'bg-amber-900/50 text-amber-400' : 'bg-blue-900/50 text-blue-400'}`}>
                                     <Music className="w-4 h-4" />
                                 </div>
@@ -61,6 +68,17 @@ export default function Songs() {
                                 </div>
                             </div>
                             <div className="flex items-center gap-1">
+                                {isAdmin && (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-muted-foreground hover:text-primary"
+                                        onClick={() => handleEdit(song)}
+                                        title="Editar"
+                                    >
+                                        <Pencil className="w-4 h-4" />
+                                    </Button>
+                                )}
                                 <Button
                                     variant="ghost"
                                     size="icon"
@@ -127,6 +145,17 @@ export default function Songs() {
                 onOpenChange={setIsLyricsOpen}
                 songId={selectedSong?.id || null}
                 songTitle={selectedSong?.title || ""}
+                onKeySaved={async () => { await refetch() }}
+            />
+
+            <CreateSongDialog
+                open={isEditOpen}
+                onOpenChange={setIsEditOpen}
+                songToEdit={songToEdit}
+                onSongCreated={() => {
+                    refetch()
+                    setIsEditOpen(false)
+                }}
             />
         </div>
     )

@@ -244,7 +244,13 @@ export type Database = {
             [_ in never]: never
         }
         Functions: {
-            [_ in never]: never
+            perform_substitution: {
+                Args: {
+                    unavailable_team_id: string
+                    backup_team_id: string | null
+                }
+                Returns: void
+            }
         }
         Enums: {
             service_type:

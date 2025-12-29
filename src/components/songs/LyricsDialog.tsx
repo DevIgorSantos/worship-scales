@@ -76,13 +76,13 @@ export function LyricsDialog({
         setLoading(true)
 
         // Fetch song metadata AND lyrics
-        const { data: songData, error: songError } = await supabase
+        const { data: songData } = await supabase
             .from("songs")
             .select("tone")
             .eq("id", id)
             .single()
 
-        const { data: lyricsData, error: lyricsError } = await supabase
+        const { data: lyricsData } = await supabase
             .from("lyrics")
             .select("content")
             .eq("song_id", id)

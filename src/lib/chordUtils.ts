@@ -115,7 +115,7 @@ export function transposeLine(line: string, semitones: number): string {
     // Captures: Note (A-G + maybe #/b) + Suffix + maybe Bass
     // We need to be careful not to eat too much.
     // Simple heuristic: A token that looks like a chord.
-    const chordRegex = /\b([A-G][b#]?(?:m|M|maj|min|dim|aug|sus|add|\d)*)(?:\/[A-G][b#]?)?\b/g;
+
     // \b is tricky with / char, let's relax regex similar to isChordLine
     // But we are in a known chord line, so we can be more aggressive?
     // Let's use the previous logic but refine it.

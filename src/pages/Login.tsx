@@ -11,10 +11,8 @@ export default function Login() {
     const navigate = useNavigate()
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
-    const [fullName, setFullName] = useState("")
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [isSignUp, setIsSignUp] = useState(false)
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -22,28 +20,12 @@ export default function Login() {
         setError(null)
 
         try {
-            if (isSignUp) {
-                const { error } = await supabase.auth.signUp({
-                    email,
-                    password,
-                    options: {
-                        data: {
-                            full_name: fullName,
-                        }
-                    }
-                })
-                if (error) throw error
-                // alert("Conta criada com sucesso!") // Remove alert to just auto-login if configured or redirect
-                alert("Conta criada! Se o email confirmar for necessário, verifique sua caixa de entrada.")
-                if (!error) navigate("/") // Try to navigate if auto-signin works
-            } else {
-                const { error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                })
-                if (error) throw error
-                navigate("/")
-            }
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            })
+            if (error) throw error
+            navigate("/")
         } catch (err: any) {
             setError(err.message)
         } finally {
@@ -59,24 +41,11 @@ export default function Login() {
                         Worship Team
                     </CardTitle>
                     <CardDescription className="text-center">
-                        {isSignUp ? "Crie sua conta para acessar" : "Entre para ver suas escalas"}
+                        Entre para ver suas escalas
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleAuth} className="space-y-4">
-                        {isSignUp && (
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Nome Completo</Label>
-                                <Input
-                                    id="name"
-                                    type="text"
-                                    placeholder="Seu Nome"
-                                    value={fullName}
-                                    onChange={(e) => setFullName(e.target.value)}
-                                    required
-                                />
-                            </div>
-                        )}
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
                             <Input
@@ -105,14 +74,12 @@ export default function Login() {
                             </div>
                         )}
                         <Button className="w-full" type="submit" disabled={loading}>
-                            {loading ? "Carregando..." : isSignUp ? "Criar Conta" : "Entrar"}
+                            {loading ? "Carregando..." : "Entrar"}
                         </Button>
                     </form>
                 </CardContent>
-                <CardFooter className="flex justify-center">
-                    <Button variant="link" onClick={() => setIsSignUp(!isSignUp)}>
-                        {isSignUp ? "Já tem uma conta? Entre" : "Não tem conta? Cadastre-se"}
-                    </Button>
+                <CardFooter className="flex justify-center text-xs text-muted-foreground">
+                    Caso não tenha acesso, contate o administrador.
                 </CardFooter>
             </Card>
         </div>

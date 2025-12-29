@@ -41,7 +41,7 @@ export function ManageServiceSongs({ serviceId, currentSongs, onUpdate }: Manage
             const { data, error } = await supabase
                 .from("songs")
                 .select("*")
-                .ilike("title", `% ${searchTerm}% `)
+                .ilike("title", `%${searchTerm}%`)
                 .limit(5)
 
             if (error) throw error

@@ -146,18 +146,24 @@ export type Database = {
                     instrument: string
                     member_id: string
                     service_id: string
+                    status: "confirmed" | "unavailable" | "substituted"
+                    role_type: "primary" | "backup"
                 }
                 Insert: {
                     id?: string
                     instrument: string
                     member_id: string
                     service_id: string
+                    status?: "confirmed" | "unavailable" | "substituted"
+                    role_type?: "primary" | "backup"
                 }
                 Update: {
                     id?: string
                     instrument?: string
                     member_id?: string
                     service_id?: string
+                    status?: "confirmed" | "unavailable" | "substituted"
+                    role_type?: "primary" | "backup"
                 }
                 Relationships: [
                     {

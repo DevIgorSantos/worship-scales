@@ -6,6 +6,7 @@ import Schedules from "./pages/Schedules"
 import Songs from "./pages/Songs"
 import ServiceDetail from "./pages/ServiceDetail"
 import Profile from "./pages/Profile"
+import SetPassword from "@/pages/Auth/SetPassword"
 import Login from "./pages/Login"
 import Members from "./pages/Admin/Members"
 import ImportHarpa from "./pages/Admin/ImportHarpa"
@@ -30,6 +31,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/definir-senha" element={<SetPassword />} /> {/* Added the new route here */}
 
           <Route element={
             <ProtectedRoute>

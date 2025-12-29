@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2, Search, Edit2 } from "lucide-react"
+import { Loader2, Search, Edit2, Trash2 } from "lucide-react"
 import type { Database } from "@/types/supabase"
 import { Link } from "react-router-dom"
+import { createClient } from "@supabase/supabase-js"
+import { Plus } from "lucide-react"
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 
@@ -30,6 +32,13 @@ export default function Members() {
     const [editInstruments, setEditInstruments] = useState<string[]>([])
     const [isSaving, setIsSaving] = useState(false)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+    // Add state
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+    const [addName, setAddName] = useState("")
+    const [addEmail, setAddEmail] = useState("")
+    const [addRole, setAddRole] = useState<"admin" | "member">("member")
+    const [isAdding, setIsAdding] = useState(false)
 
     useEffect(() => {
         fetchProfiles()
@@ -82,6 +91,61 @@ export default function Members() {
         }
     }
 
+    const handleAddUser = async () => {
+        setIsAdding(true)
+        try {
+            // Create a temporary client to avoid interfering with current session
+            const tempSupabase = createClient(
+                import.meta.env.VITE_SUPABASE_URL,
+                import.meta.env.VITE_SUPABASE_ANON_KEY
+            )
+
+            // Send Magic Link (OTP)
+            // If user doesn't exist, this creates them (provided "Disable Signups" is false in dashboard)
+            // If user exists, this just sends a login link.
+            const { error: otpError } = await tempSupabase.auth.signInWithOtp({
+                email: addEmail,
+                options: {
+                    emailRedirectTo: `${window.location.origin}/definir-senha`,
+                    // We store name/role in metadata so we can access it after they log in
+                    data: {
+                        full_name: addName,
+                        role: addRole
+                    }
+                }
+            })
+
+            if (otpError) throw otpError
+
+            alert("Convite enviado com sucesso! O usuário receberá um Link Mágico para acessar.")
+            setIsAddDialogOpen(false)
+            setAddName("")
+            setAddEmail("")
+            setAddRole("member")
+            // Note: We cannot create the 'profiles' row here because we don't have the ID yet.
+            // The profile will be created/updated when the user logs in and sets their password.
+        } catch (error: any) {
+            console.error("Error sending invite:", error)
+            alert("Erro ao enviar convite: " + error.message)
+        } finally {
+            setIsAdding(false)
+        }
+    }
+
+    const handleDeleteUser = async (profileId: string) => {
+        if (!confirm("Tem certeza que deseja remover este usuário? Esta ação não pode ser desfeita.")) return
+
+        try {
+            const { error } = await supabase.from("profiles").delete().eq("id", profileId)
+            if (error) throw error
+            fetchProfiles()
+            alert("Usuário removido com sucesso!")
+        } catch (error: any) {
+            console.error("Error deleting user:", error)
+            alert("Erro ao remover usuário: " + error.message)
+        }
+    }
+
     const filteredProfiles = profiles.filter(p =>
         p.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
     )
@@ -90,9 +154,15 @@ export default function Members() {
         <div className="p-4 pb-24 space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-primary">Gestão de Membros</h1>
-                <Button variant="outline" size="sm" asChild>
-                    <Link to="/gestao/importar-harpa">Importar Harpa</Link>
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                        <Link to="/gestao/importar-harpa">Importar Harpa</Link>
+                    </Button>
+                    <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar Membro
+                    </Button>
+                </div>
             </div>
 
             <div className="relative">
@@ -131,14 +201,60 @@ export default function Members() {
                                         )}
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={() => handleEditClick(profile)}>
-                                    <Edit2 className="w-4 h-4" />
-                                </Button>
+                                <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(profile)}>
+                                        <Edit2 className="w-4 h-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(profile.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
                     ))}
                 </div>
             )}
+
+
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Adicionar Novo Membro</DialogTitle>
+                        <DialogDescription>Crie uma conta para um novo membro da equipe.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label>Nome Completo</Label>
+                            <Input value={addName} onChange={e => setAddName(e.target.value)} placeholder="João Silva" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Email</Label>
+                            <Input value={addEmail} onChange={e => setAddEmail(e.target.value)} type="email" placeholder="joao@exemplo.com" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Nível de Acesso</Label>
+                            <Select value={addRole} onValueChange={(v: "admin" | "member") => setAddRole(v)}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="member">Membro</SelectItem>
+                                    <SelectItem value="admin">Administrador</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="text-sm text-muted-foreground p-2 bg-muted rounded-md">
+                            O usuário receberá um email para definir sua senha e finalizar o cadastro.
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleAddUser} disabled={isAdding}>
+                            {isAdding ? "Criando..." : "Criar Usuário"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent>
@@ -187,6 +303,6 @@ export default function Members() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     )
 }

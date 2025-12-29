@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react"
+import { Download } from "lucide-react"
+import { fetchCifraClubData } from "@/lib/scraper"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +27,8 @@ export function CreateSongDialog({ onSongCreated, songToEdit, open: controlledOp
     const setOpen = setControlledOpen || setInternalOpen
 
     const [loading, setLoading] = useState(false)
+    const [importLoading, setImportLoading] = useState(false)
+    const [importUrl, setImportUrl] = useState("")
     const [title, setTitle] = useState("")
     const [artist, setArtist] = useState("")
     const [link, setLink] = useState("")
@@ -59,9 +63,9 @@ export function CreateSongDialog({ onSongCreated, songToEdit, open: controlledOp
             // If we are sharing the dialog for create/edit, we should reset when opening for create.
             // But this component logic implies it's either mounted with songToEdit or not, OR usage pattern updates.
         } else if (!songToEdit) {
+            setImportUrl("")
             setTitle("")
             setArtist("")
-            setLink("")
             setLink("")
             setType("Louvor")
             setTone("C")
@@ -143,6 +147,50 @@ export function CreateSongDialog({ onSongCreated, songToEdit, open: controlledOp
         }
 
         return text.join("\n").trim()
+    }
+
+    const handleImport = async () => {
+        if (!importUrl) {
+            alert("Por favor, insira um link do Cifra Club.")
+            return
+        }
+
+        setImportLoading(true)
+        try {
+            const data = await fetchCifraClubData(importUrl)
+
+            if (data.title) setTitle(data.title)
+            if (data.artist) setArtist(data.artist)
+            if (data.content) setLyrics(data.content)
+            if (data.youtubeLink) setLink(data.youtubeLink)
+
+            // Try to set tone
+            if (data.tone) {
+                const normalizedTone = data.tone.match(/^[A-G][#b]?/)?.[0]
+                if (normalizedTone) {
+                    // Check if it exists in valid options (simple check)
+                    // The select values are C, C#, D, D#, etc.
+                    // We might need to map Bb to A#, Eb to D#, Gb to F#, Ab to G#, Db to C#
+                    let mappedTone = normalizedTone
+                    const flatMap: Record<string, string> = {
+                        "Db": "C#",
+                        "Eb": "D#",
+                        "Gb": "F#",
+                        "Ab": "G#",
+                        "Bb": "A#"
+                    }
+                    if (flatMap[normalizedTone]) mappedTone = flatMap[normalizedTone]
+
+                    setTone(mappedTone)
+                }
+            }
+
+        } catch (error) {
+            console.error("Import error:", error)
+            alert(error instanceof Error ? error.message : "Erro ao importar música.")
+        } finally {
+            setImportLoading(false)
+        }
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -256,9 +304,9 @@ export function CreateSongDialog({ onSongCreated, songToEdit, open: controlledOp
             setOpen(false)
             onSongCreated()
             if (!isEditing) {
+                setImportUrl("")
                 setTitle("")
                 setArtist("")
-                setLink("")
                 setLink("")
                 setType("Louvor")
                 setTone("C")
@@ -456,8 +504,34 @@ export function CreateSongDialog({ onSongCreated, songToEdit, open: controlledOp
                             </Select>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="importUrl" className="text-right">
+                                Importar
+                            </Label>
+                            <div className="col-span-3 flex gap-2">
+                                <Input
+                                    id="importUrl"
+                                    type="url"
+                                    className="flex-1"
+                                    value={importUrl}
+                                    onChange={(e) => setImportUrl(e.target.value)}
+                                    placeholder="Link do Cifra Club"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="icon"
+                                    onClick={handleImport}
+                                    disabled={importLoading || !importUrl}
+                                    title="Importar do Cifra Club"
+                                >
+                                    <Download className={`w-4 h-4 ${importLoading ? 'animate-bounce' : ''}`} />
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="link" className="text-right">
-                                Link
+                                Link (YouTube)
                             </Label>
                             <Input
                                 id="link"
@@ -465,7 +539,7 @@ export function CreateSongDialog({ onSongCreated, songToEdit, open: controlledOp
                                 className="col-span-3"
                                 value={link}
                                 onChange={(e) => setLink(e.target.value)}
-                                placeholder="YouTube/Spotify Link"
+                                placeholder="Link do YouTube / Spotify"
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">

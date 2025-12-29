@@ -134,6 +134,96 @@ export default function ServiceDetail() {
         setIsLyricsOpen(true)
     }
 
+    const handleMarkUnavailable = async (member: ServiceTeam) => {
+        if (!confirm("Confirmar que você não poderá comparecer? O sistema tentará encontrar um substituto.")) return
+
+        console.log("Starting handleMarkUnavailable for:", member)
+        setLoading(true)
+        try {
+            // Find Substitution Candidate
+            // We fetch the latest team first to ensure accuracy
+            console.log("Fetching latest team data...")
+            const { data: latestTeam, error: fetchError } = await supabase
+                .from("service_team")
+                .select("*, profiles(*)")
+                .eq("service_id", id!)
+
+            if (fetchError || !latestTeam) throw fetchError || new Error("Failed to reload team")
+
+            const currentMemberInstrument = member.instrument
+            console.log("Searching for backup in instrument:", currentMemberInstrument)
+
+            // Candidates: Backups for the SAME instrument, who are confirmed
+            const candidates = latestTeam.filter(t =>
+                t.role_type === "backup" &&
+                t.status === "confirmed" &&
+                t.instrument === currentMemberInstrument
+            )
+            console.log("Candidates found:", candidates)
+
+            let selectedCandidate: any = null
+
+            for (const candidate of candidates) {
+                // Rule 3.3: Check if candidate already has a PRIMARY role
+                const existingPrimaryRole = latestTeam.find(t =>
+                    t.member_id === candidate.member_id &&
+                    t.role_type === "primary" &&
+                    t.status === "confirmed"
+                )
+
+                if (existingPrimaryRole) {
+                    const existingInst = existingPrimaryRole.instrument
+                    const neededInst = currentMemberInstrument
+
+                    const isExistingVocal = existingInst === "Vocals" || existingInst === "Vocal"
+                    const isNeededVocal = neededInst === "Vocals" || neededInst === "Vocal"
+
+                    console.log(`Checking conflict for candidate ${candidate.profiles?.full_name}: Existing=${existingInst}, Needed=${neededInst}`)
+
+                    // Allowed: Instrument + Vocal OR Vocal + Instrument
+                    if ((isExistingVocal && !isNeededVocal) || (!isExistingVocal && isNeededVocal)) {
+                        selectedCandidate = candidate
+                        console.log("Candidate selected (Conflict resolved allowed):", candidate)
+                        break
+                    }
+                    console.log("Candidate skipped due to conflict.")
+                } else {
+                    selectedCandidate = candidate
+                    console.log("Candidate selected (No conflict):", candidate)
+                    break
+                }
+            }
+
+            console.log("Calling perform_substitution RPC...")
+            // Perform Secure Update via RPC
+            const { error: rpcError } = await supabase.rpc("perform_substitution", {
+                unavailable_team_id: member.id,
+                backup_team_id: selectedCandidate ? selectedCandidate.id : null
+            })
+
+            if (rpcError) {
+                console.error("RPC Error:", rpcError)
+                throw rpcError
+            } else {
+                console.log("RPC Success")
+            }
+
+            if (selectedCandidate) {
+                alert(`Você marcou indisponibilidade. ${selectedCandidate.profiles?.full_name} assumiu seu lugar como ${currentMemberInstrument}.`)
+            } else {
+                alert("Você marcou indisponibilidade. Nenhum reserva disponível foi encontrado para sua função.")
+            }
+
+            await fetchServiceDetails()
+
+        } catch (error: any) {
+            console.error("Error marking unavailable:", error)
+            alert("Erro ao processar: " + error.message)
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const handleDeleteService = async () => {
         if (!service || !id) return
 
@@ -363,18 +453,78 @@ export default function ServiceDetail() {
                 {team.length === 0 ? (
                     <p className="text-muted-foreground text-sm italic ml-2">Equipe não definida.</p>
                 ) : (
-                    <div className="grid grid-cols-2 gap-3">
-                        {team.map((member) => (
-                            <div key={member.id} className="flex items-center gap-3 p-3 bg-card border rounded-lg">
-                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs uppercase">
-                                    {member.profiles?.full_name?.slice(0, 2) || "??"}
+                    <div className="space-y-6">
+                        {/* Titulares */}
+                        <div>
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-4 pl-1 border-b pb-1">TITULARES</h3>
+
+                            {Array.from(new Set(team.filter(m => m.role_type === 'primary').map(m => m.instrument))).sort().map(instrument => (
+                                <div key={instrument} className="mb-6">
+                                    <h4 className="text-xs font-bold text-muted-foreground/80 uppercase mb-2 pl-1 tracking-wider">{instrument === 'Vocals' ? 'Vocal' : instrument}</h4>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {team.filter(m => m.role_type === 'primary' && m.instrument === instrument).map((member) => {
+                                            const isMe = user?.id === member.member_id
+                                            const isUnavailable = member.status === "unavailable"
+
+                                            return (
+                                                <div key={member.id} className={`relative flex flex-col p-3 bg-card border rounded-lg ${isUnavailable ? "opacity-60 bg-red-50/10 border-red-200/20" : ""}`}>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs uppercase shrink-0">
+                                                            {member.profiles?.full_name?.slice(0, 2) || "??"}
+                                                        </div>
+                                                        <div className="overflow-hidden min-w-0 flex-1">
+                                                            <p className={`font-medium text-sm truncate ${isUnavailable ? "line-through decoration-red-500" : ""}`}>
+                                                                {member.profiles?.full_name}
+                                                            </p>
+                                                            {/* Instrument is redundant now, but keep for clarity or remove? User asked for grouping. I'll keep it but maybe smaller or remove. I'll keep it for now. */}
+                                                            {isUnavailable && <p className="text-[10px] text-red-500 font-bold uppercase mt-0.5">Indisponível</p>}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Action for "Me" */}
+                                                    {isMe && !isUnavailable && !isAdmin && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="mt-2 h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 w-full"
+                                                            onClick={() => handleMarkUnavailable(member)}
+                                                        >
+                                                            Não poderei ir
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
                                 </div>
-                                <div className="overflow-hidden">
-                                    <p className="font-medium text-sm truncate">{member.profiles?.full_name}</p>
-                                    <p className="text-xs text-muted-foreground capitalize">{member.instrument}</p>
-                                </div>
+                            ))}
+                        </div>
+
+                        {/* Reservas */}
+                        {team.some(m => m.role_type === "backup") && (
+                            <div className="mt-8">
+                                <h3 className="text-sm font-semibold text-muted-foreground mb-4 pl-1 border-b pb-1">RESERVAS</h3>
+
+                                {Array.from(new Set(team.filter(m => m.role_type === 'backup').map(m => m.instrument))).sort().map(instrument => (
+                                    <div key={instrument} className="mb-6">
+                                        <h4 className="text-xs font-bold text-muted-foreground/80 uppercase mb-2 pl-1 tracking-wider">{instrument === 'Vocals' ? 'Vocal' : instrument}</h4>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {team.filter(m => m.role_type === 'backup' && m.instrument === instrument).map((member) => (
+                                                <div key={member.id} className="flex items-center gap-3 p-3 bg-yellow-50/5 border border-yellow-200/20 rounded-lg">
+                                                    <div className="w-8 h-8 rounded-full bg-yellow-200/20 flex items-center justify-center text-yellow-600 font-bold text-xs uppercase shrink-0">
+                                                        {member.profiles?.full_name?.slice(0, 2) || "??"}
+                                                    </div>
+                                                    <div className="overflow-hidden">
+                                                        <p className="font-medium text-sm truncate text-yellow-600/90">{member.profiles?.full_name}</p>
+                                                        {/* <p className="text-xs text-muted-foreground capitalize">{member.instrument}</p> */}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
+                        )}
                     </div>
                 )}
             </div>

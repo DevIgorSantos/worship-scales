@@ -29,6 +29,7 @@ export function ManageServiceTeam({ serviceId, currentTeam, onUpdate }: ManageSe
     // Form state
     const [selectedMember, setSelectedMember] = useState<string>("")
     const [selectedInstrument, setSelectedInstrument] = useState<string>("")
+    const [isBackup, setIsBackup] = useState(false)
 
     useEffect(() => {
         if (open) {
@@ -49,7 +50,9 @@ export function ManageServiceTeam({ serviceId, currentTeam, onUpdate }: ManageSe
             const { error } = await supabase.from("service_team").insert({
                 service_id: serviceId,
                 member_id: selectedMember,
-                instrument: selectedInstrument
+                instrument: selectedInstrument,
+                role_type: isBackup ? "backup" : "primary",
+                status: "confirmed"
             })
 
             if (error) throw error
@@ -57,6 +60,7 @@ export function ManageServiceTeam({ serviceId, currentTeam, onUpdate }: ManageSe
             onUpdate()
             setSelectedMember("")
             setSelectedInstrument("")
+            setIsBackup(false)
         } catch (error) {
             console.error("Error adding team member:", error)
         } finally {
@@ -77,10 +81,6 @@ export function ManageServiceTeam({ serviceId, currentTeam, onUpdate }: ManageSe
             console.error("Error removing team member:", error)
         }
     }
-
-    // Filter profiles not already in team (optional, or allow multiple roles)
-    // Typically a person can have multiple roles, so we won't strictly filter them out of the list,
-    // but maybe visualization helps. For simplicity, show all.
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -125,9 +125,21 @@ export function ManageServiceTeam({ serviceId, currentTeam, onUpdate }: ManageSe
                                             {inst}
                                         </SelectItem>
                                     ))}
-                                    {/* Add custom option logic later if needed */}
                                 </SelectContent>
                             </Select>
+
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id="backup"
+                                    checked={isBackup}
+                                    onChange={(e) => setIsBackup(e.target.checked)}
+                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <label htmlFor="backup" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    Adicionar como Reserva
+                                </label>
+                            </div>
 
                             <Button onClick={addMember} disabled={!selectedMember || !selectedInstrument || loading}>
                                 <Plus className="w-4 h-4 mr-2" /> Adicionar
@@ -149,7 +161,14 @@ export function ManageServiceTeam({ serviceId, currentTeam, onUpdate }: ManageSe
                                                 {item.profiles?.full_name?.slice(0, 2) || "??"}
                                             </div>
                                             <div className="truncate">
-                                                <p className="font-medium text-sm truncate">{item.profiles?.full_name}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-medium text-sm truncate">{item.profiles?.full_name}</p>
+                                                    {item.role_type === "backup" && (
+                                                        <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded border border-yellow-200">
+                                                            Reserva
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="text-xs text-muted-foreground">{item.instrument}</p>
                                             </div>
                                         </div>

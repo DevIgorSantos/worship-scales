@@ -155,9 +155,9 @@ export default function Members() {
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-primary">Gestão de Membros</h1>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" asChild>
+                    {/* <Button variant="outline" size="sm" asChild>
                         <Link to="/gestao/importar-harpa">Importar Harpa</Link>
-                    </Button>
+                    </Button> */}
                     <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
                         <Plus className="w-4 h-4 mr-2" />
                         Adicionar Membro

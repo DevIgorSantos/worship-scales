@@ -94,3 +94,60 @@ export async function fetchCifraClubData(url: string): Promise<ScrapedSongData> 
         youtubeLink
     }
 }
+
+export async function fetchDailyVerse() {
+    // Use allorigins as a CORS proxy
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('https://www.bibliaon.com/versiculo_do_dia/')}`
+
+    const response = await fetch(proxyUrl)
+    if (!response.ok) {
+        throw new Error('Falha ao acessar o BibliaOn via proxy.')
+    }
+
+    const data = await response.json()
+    const html = data.contents
+
+    if (!html) {
+        throw new Error('Não foi possível obter o conteúdo da página do Versículo do Dia.')
+    }
+
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+
+    // Extract Verse Text
+    const textElement = doc.querySelector('#versiculo_hoje')
+    const text = textElement?.textContent?.trim() || ''
+
+    // Extract Reference
+    // Based on common layout, the reference is usually an anchor tag inside the container or similar.
+    // In the screenshot, it looks like a link below the text.
+    // Try finding the first link inside .versiculo-dia or generally in the card.
+    // Or check for a specific class if known.
+    // Let's try finding the anchor that contains the check (often they link to the chapter).
+    // A safer bet for BibliaOn is looking for `p.referencia` or `.ref`.
+    // But since I don't see proper classes in screenshot, I'll search for the `a` tag inside `.daily-card` that is NOT the formatted date.
+
+    // Attempt 1: Look for an 'a' tag after the #versiculo_hoje
+    // The specific structure often has the reference as a link: <a href="/joel_3">Joel 3:10</a>
+
+    let reference = ''
+    const container = doc.querySelector('.versiculo-dia') || doc.querySelector('.daily-card')
+
+    if (container) {
+        // Get all links
+        const links = container.querySelectorAll('a')
+        // filtering links that are not likely navigation
+        for (const link of Array.from(links)) {
+            const href = link.getAttribute('href')
+            // Verse links usually look like /livro_capitulo
+            if (href && !href.includes('facebook') && !href.includes('twitter')) {
+                reference = link.textContent?.trim() || ''
+                break
+            }
+        }
+    }
+
+    if (!text) throw new Error("Versículo não encontrado no HTML.")
+
+    return { text, reference }
+}

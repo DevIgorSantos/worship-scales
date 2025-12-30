@@ -6,6 +6,7 @@ import { Calendar, Clock, ArrowLeft, CheckCircle, Circle, Music, User, PlayCircl
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import type { Database } from "@/types/supabase"
 import { ManageServiceSongs } from "@/components/services/ManageServiceSongs"
@@ -469,9 +470,12 @@ export default function ServiceDetail() {
                                             return (
                                                 <div key={member.id} className={`relative flex flex-col p-3 bg-card border rounded-lg ${isUnavailable ? "opacity-60 bg-red-50/10 border-red-200/20" : ""}`}>
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs uppercase shrink-0">
-                                                            {member.profiles?.full_name?.slice(0, 2) || "??"}
-                                                        </div>
+                                                        <Avatar className="w-8 h-8 shrink-0">
+                                                            <AvatarImage src={member.profiles?.avatar_url || undefined} className="object-cover" />
+                                                            <AvatarFallback className="bg-primary/20 text-primary font-bold text-xs uppercase">
+                                                                {member.profiles?.full_name?.slice(0, 2) || "??"}
+                                                            </AvatarFallback>
+                                                        </Avatar>
                                                         <div className="overflow-hidden min-w-0 flex-1">
                                                             <p className={`font-medium text-sm truncate ${isUnavailable ? "line-through decoration-red-500" : ""}`}>
                                                                 {member.profiles?.full_name}
@@ -511,9 +515,12 @@ export default function ServiceDetail() {
                                         <div className="grid grid-cols-2 gap-3">
                                             {team.filter(m => m.role_type === 'backup' && m.instrument === instrument).map((member) => (
                                                 <div key={member.id} className="flex items-center gap-3 p-3 bg-yellow-50/5 border border-yellow-200/20 rounded-lg">
-                                                    <div className="w-8 h-8 rounded-full bg-yellow-200/20 flex items-center justify-center text-yellow-600 font-bold text-xs uppercase shrink-0">
-                                                        {member.profiles?.full_name?.slice(0, 2) || "??"}
-                                                    </div>
+                                                    <Avatar className="w-8 h-8 shrink-0">
+                                                        <AvatarImage src={member.profiles?.avatar_url || undefined} className="object-cover" />
+                                                        <AvatarFallback className="bg-yellow-200/20 text-yellow-600 font-bold text-xs uppercase">
+                                                            {member.profiles?.full_name?.slice(0, 2) || "??"}
+                                                        </AvatarFallback>
+                                                    </Avatar>
                                                     <div className="overflow-hidden">
                                                         <p className="font-medium text-sm truncate text-yellow-600/90">{member.profiles?.full_name}</p>
                                                         {/* <p className="text-xs text-muted-foreground capitalize">{member.instrument}</p> */}

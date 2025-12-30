@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Quote } from "lucide-react"
+import { fetchDailyVerse } from "../../lib/scraper"
 
 interface Verse {
     book: { name: string, author: string, group: string }
@@ -14,12 +15,68 @@ export function VerseOfTheDay() {
 
     useEffect(() => {
         const fetchVerse = async () => {
+            const today = new Date().toLocaleDateString()
+            const CACHE_KEY = "verse_of_the_day"
+
+            // 1. Try Cache
             try {
-                // Fetch random verse from NVI version
-                const res = await fetch("https://www.abibliadigital.com.br/api/verses/nvi/random")
-                if (!res.ok) throw new Error("Failed to fetch")
-                const data = await res.json()
-                setVerse(data)
+                const cached = localStorage.getItem(CACHE_KEY)
+                if (cached) {
+                    const parsed = JSON.parse(cached)
+                    if (parsed.date === today && parsed.verse) {
+                        setVerse(parsed.verse)
+                        setLoading(false)
+                        return
+                    }
+                }
+            } catch (e) {
+                console.warn("Error parsing cached verse", e)
+            }
+
+            // 2. Fetch from Scraper
+            try {
+                const { text, reference } = await fetchDailyVerse()
+
+                // Fix Duplication: Remove the reference if it appears in the text
+                // e.g. "Text... Joel 3:10" -> "Text..."
+                // We use a flexible regex replace or simple string replace
+                const cleanText = text.replace(reference, "").trim()
+                // Also remove quotes if they wrap the entire text, though cleaner not to if stylistic
+                // Let's just remove the reference.
+
+                // Parse Reference (e.g. "Joel 3:10")
+                const match = reference.match(/(.+)\s+(\d+):(\d+)/)
+
+                let newVerse: Verse
+
+                if (match) {
+                    newVerse = {
+                        book: {
+                            name: match[1].trim(),
+                            author: "",
+                            group: ""
+                        },
+                        chapter: parseInt(match[2]),
+                        number: parseInt(match[3]),
+                        text: cleanText
+                    }
+                } else {
+                    newVerse = {
+                        book: { name: reference, author: "", group: "" },
+                        chapter: 0,
+                        number: 0,
+                        text: cleanText
+                    }
+                }
+
+                setVerse(newVerse)
+
+                // 3. Save Cache
+                localStorage.setItem(CACHE_KEY, JSON.stringify({
+                    date: today,
+                    verse: newVerse
+                }))
+
             } catch (error) {
                 console.error("Error fetching verse:", error)
                 // Fallback verse
@@ -49,7 +106,7 @@ export function VerseOfTheDay() {
                     "{verse.text}"
                 </p>
                 <div className="flex items-center gap-2 text-sm font-medium text-white/90">
-                    <span>{verse.book.name} {verse.chapter}:{verse.number}</span>
+                    <span>{verse.book.name}{verse.chapter > 0 && ` ${verse.chapter}:${verse.number}`}</span>
                 </div>
             </div>
         </div>

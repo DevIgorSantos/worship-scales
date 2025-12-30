@@ -9,6 +9,8 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import { Loader2, Music, Save } from "lucide-react"
 import { parseSong, transposeLine, transposeSong, getSemitonesBetween, type ParsedLine } from "@/lib/chordUtils"
 import { useAuth } from "@/contexts/AuthContext"
@@ -36,6 +38,14 @@ export function LyricsDialog({
     const [parsedLines, setParsedLines] = useState<ParsedLine[]>([])
     const [loading, setLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
+    const [showLyricsOnly, setShowLyricsOnly] = useState(() => {
+        const saved = localStorage.getItem("lyricsDialog.showLyricsOnly")
+        return saved === "true"
+    })
+
+    useEffect(() => {
+        localStorage.setItem("lyricsDialog.showLyricsOnly", String(showLyricsOnly))
+    }, [showLyricsOnly])
 
     // New State for Key System
     const [originalTone, setOriginalTone] = useState("C") // Default if not found
@@ -205,6 +215,17 @@ export function LyricsDialog({
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <div className="flex items-center space-x-2 mr-2">
+                            <Checkbox
+                                id="lyrics-only"
+                                checked={showLyricsOnly}
+                                onCheckedChange={(checked) => setShowLyricsOnly(checked as boolean)}
+                            />
+                            <Label htmlFor="lyrics-only" className="text-sm font-medium cursor-pointer hidden sm:inline-block">
+                                Apenas Letra
+                            </Label>
+                        </div>
+
                         {/* Key Selector */}
                         <Dialog open={isSelectorOpen} onOpenChange={setIsSelectorOpen}>
                             <DialogTrigger asChild>
@@ -260,6 +281,9 @@ export function LyricsDialog({
                         <div className="space-y-1">
                             {parsedLines.map((line, idx) => {
                                 const isChord = line.type === 'chords';
+
+                                if (showLyricsOnly && isChord) return null;
+
                                 const isHeader = line.type === 'header';
                                 const styleClass = isChord
                                     ? 'text-primary font-bold'

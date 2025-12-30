@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Music, PlayCircle, FileText, Search, Pencil } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Music, PlayCircle, FileText, Search, Pencil, ChevronLeft, ChevronRight } from "lucide-react"
 // import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
@@ -18,11 +18,25 @@ export default function Songs() {
     const [search, setSearch] = useState("")
     const [currentTab, setCurrentTab] = useState("all") // all, louvor, harpa
 
-    // Using the hook handles loading and caching
-    const { data: songs = [], isLoading: loading, refetch } = useSongs({
+    // Pagination
+    const [page, setPage] = useState(1)
+    const itemsPerPage = 20
+
+    // Reset page when tab or search changes
+    useEffect(() => {
+        setPage(1)
+    }, [currentTab, search])
+
+    const { data: songsData, isLoading: loading, refetch } = useSongs({
         search,
-        type: currentTab
+        type: currentTab,
+        page,
+        limit: itemsPerPage
     })
+
+    const songs = songsData?.data || []
+    const totalCount = songsData?.count || 0
+    const totalPages = Math.ceil(totalCount / itemsPerPage)
 
     // Lyrics state
     const [selectedSong, setSelectedSong] = useState<{ id: string, title: string } | null>(null)
@@ -40,6 +54,36 @@ export default function Songs() {
         setIsLyricsOpen(true)
     }
 
+    const renderPagination = () => {
+        if (totalPages <= 1) return null
+
+        return (
+            <div className="flex items-center justify-center gap-4 py-4">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1 || loading}
+                >
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    Anterior
+                </Button>
+                <span className="text-sm font-medium text-muted-foreground">
+                    Página {page} de {totalPages}
+                </span>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages || loading}
+                >
+                    Próxima
+                    <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+            </div>
+        )
+    }
+
     const renderSongList = () => {
         if (loading) {
             return <p className="text-muted-foreground text-center py-8">Carregando...</p>
@@ -54,49 +98,52 @@ export default function Songs() {
         }
 
         return (
-            <div className="grid gap-3">
-                {songs.map((song) => (
-                    <Card key={song.id} className="hover:bg-accent/50 transition-colors group min-w-0">
-                        <CardContent className="p-4 flex items-center justify-between">
-                            <div className="flex flex-1 items-center gap-3 overflow-hidden min-w-0">
-                                <div className={`p-2 rounded-full ${song.type === 'Harpa Cristã' ? 'bg-amber-900/50 text-amber-400' : 'bg-blue-900/50 text-blue-400'}`}>
-                                    <Music className="w-4 h-4" />
+            <div className="space-y-4">
+                <div className="grid gap-3">
+                    {songs.map((song) => (
+                        <Card key={song.id} className="hover:bg-accent/50 transition-colors group min-w-0">
+                            <CardContent className="p-4 flex items-center justify-between">
+                                <div className="flex flex-1 items-center gap-3 overflow-hidden min-w-0">
+                                    <div className={`p-2 rounded-full ${song.type === 'Harpa Cristã' ? 'bg-amber-900/50 text-amber-400' : 'bg-blue-900/50 text-blue-400'}`}>
+                                        <Music className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="font-medium truncate">{song.title}</span>
+                                        <span className="text-xs text-muted-foreground truncate">{song.artist || "Desconhecido"}</span>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className="font-medium truncate">{song.title}</span>
-                                    <span className="text-xs text-muted-foreground truncate">{song.artist || "Desconhecido"}</span>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                {isAdmin && (
+                                <div className="flex items-center gap-1">
+                                    {isAdmin && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-muted-foreground hover:text-primary"
+                                            onClick={() => handleEdit(song)}
+                                            title="Editar"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </Button>
+                                    )}
                                     <Button
                                         variant="ghost"
                                         size="icon"
                                         className="text-muted-foreground hover:text-primary"
-                                        onClick={() => handleEdit(song)}
-                                        title="Editar"
+                                        onClick={() => handleOpenLyrics(song)}
+                                        title="Ver Letra"
                                     >
-                                        <Pencil className="w-4 h-4" />
+                                        <FileText className="w-4 h-4" />
                                     </Button>
-                                )}
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-muted-foreground hover:text-primary"
-                                    onClick={() => handleOpenLyrics(song)}
-                                    title="Ver Letra"
-                                >
-                                    <FileText className="w-4 h-4" />
-                                </Button>
-                                {song.link && (
-                                    <a href={song.link} target="_blank" rel="noopener noreferrer" className="p-2 text-muted-foreground hover:text-primary transition-colors">
-                                        <PlayCircle className="w-5 h-5" />
-                                    </a>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
+                                    {song.link && (
+                                        <a href={song.link} target="_blank" rel="noopener noreferrer" className="p-2 text-muted-foreground hover:text-primary transition-colors">
+                                            <PlayCircle className="w-5 h-5" />
+                                        </a>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+                {renderPagination()}
             </div>
         )
     }

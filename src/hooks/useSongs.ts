@@ -1,18 +1,26 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, keepPreviousData } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/types/supabase"
 
 type Song = Database["public"]["Tables"]["songs"]["Row"]
 
-interface UseSongsOptions {
+export interface UseSongsOptions {
     search?: string
     type?: string // 'louvor', 'harpa', 'all'
+    page?: number
+    limit?: number
 }
 
-export function useSongs({ search, type = 'all' }: UseSongsOptions = {}) {
+export interface SongsResponse {
+    data: Song[]
+    count: number
+}
+
+export function useSongs({ search, type = 'all', page, limit }: UseSongsOptions = {}) {
     return useQuery({
-        queryKey: ['songs', type, search],
+        queryKey: ['songs', type, search, page, limit],
         queryFn: async () => {
+            // Fetch all matching songs without range to verify sorting
             let query = supabase.from("songs").select("*").order("title", { ascending: true })
 
             if (type === "louvor") {
@@ -32,11 +40,29 @@ export function useSongs({ search, type = 'all' }: UseSongsOptions = {}) {
                 throw error
             }
 
+            let allSongs = (data as Song[]) || []
+
             // Client-side sort to handle "1 - Title" vs "10 - Title" correctly
-            return (data as Song[]).sort((a, b) => {
+            allSongs.sort((a, b) => {
                 return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' })
             })
+
+            const totalCount = allSongs.length
+
+            // Apply pagination on the client side
+            let paginatedData = allSongs
+            if (page !== undefined && limit !== undefined) {
+                const from = (page - 1) * limit
+                const to = from + limit
+                paginatedData = allSongs.slice(from, to)
+            }
+
+            return {
+                data: paginatedData,
+                count: totalCount
+            }
         },
         staleTime: 1000 * 60 * 5, // 5 minutes cache
+        placeholderData: keepPreviousData
     })
 }

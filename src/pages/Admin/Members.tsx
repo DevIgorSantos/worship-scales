@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2, Search, Edit2, Trash2 } from "lucide-react"
 import type { Database } from "@/types/supabase"
-import { Link } from "react-router-dom"
 import { createClient } from "@supabase/supabase-js"
 import { Plus } from "lucide-react"
 

@@ -106,7 +106,7 @@ export default function Members() {
             const { error: otpError } = await tempSupabase.auth.signInWithOtp({
                 email: addEmail,
                 options: {
-                    emailRedirectTo: `${window.location.origin}/definir-senha`,
+                    emailRedirectTo: `${import.meta.env.VITE_BASE_URL}/definir-senha`,
                     // We store name/role in metadata so we can access it after they log in
                     data: {
                         full_name: addName,

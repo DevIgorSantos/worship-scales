@@ -30,9 +30,7 @@ export function ServiceDialog({ onUpdate, serviceToEdit, trigger }: ServiceDialo
                 setDate(serviceToEdit.date)
                 setTime(serviceToEdit.time)
                 setDescription(serviceToEdit.description || "")
-                // Heuristic to set type if description matches enum, or default custom logic
-                // If we saved type in description previously, we can try to restore it,
-                // otherwise defaulting to Sunday Service is fine or mapped
+                setType(serviceToEdit.type)
             } else {
                 // Reset for create mode
                 // setDate("") // Don't reset date/time blindly if we want to default to today/next sunday maybe?
@@ -40,6 +38,7 @@ export function ServiceDialog({ onUpdate, serviceToEdit, trigger }: ServiceDialo
                 setDate("")
                 setDescription("")
                 setTime("18:30")
+                setType("Sunday Service")
             }
         }
     }, [open, serviceToEdit])
@@ -50,6 +49,9 @@ export function ServiceDialog({ onUpdate, serviceToEdit, trigger }: ServiceDialo
             case "Tuesday":
             case "Thursday":
                 setTime("19:30")
+                break
+            case "Rehearsal":
+                setTime("20:00")
                 break
             case "Sunday School":
                 setTime("09:00")
@@ -71,7 +73,7 @@ export function ServiceDialog({ onUpdate, serviceToEdit, trigger }: ServiceDialo
                 date,
                 time,
                 type,
-                description: description || undefined
+                description: description || null
             }
 
             let error;
@@ -147,6 +149,7 @@ export function ServiceDialog({ onUpdate, serviceToEdit, trigger }: ServiceDialo
                                 <SelectItem value="Sunday Service">Culto de Domingo</SelectItem>
                                 <SelectItem value="Tuesday">Terça-feira</SelectItem>
                                 <SelectItem value="Thursday">Quinta-feira</SelectItem>
+                                <SelectItem value="Rehearsal">Ensaio</SelectItem>
                                 <SelectItem value="Special">Especial</SelectItem>
                             </SelectContent>
                         </Select>

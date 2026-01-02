@@ -29,6 +29,7 @@ const getServiceTypeLabel = (type: string) => {
         case "Tuesday": return "Culto de Terça-feira";
         case "Thursday": return "Culto de Quinta-feira";
         case "Special": return "Especial";
+        case "Rehearsal": return "Ensaio";
         default: return type;
     }
 }

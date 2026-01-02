@@ -259,6 +259,7 @@ export type Database = {
             | "Sunday School"
             | "Sunday Service"
             | "Special"
+            | "Rehearsal"
             song_type: "Harpa Cristã" | "Louvor"
             user_role: "admin" | "member"
         }
